@@ -1,18 +1,36 @@
+plugins {
+    id 'com.github.johnrengelman.shadow' version '2.0.1'
+    id 'java'
+    id 'application'
+}
+
 group 'com.tylernickerson'
-version '0.0.1'
-
-apply plugin: 'java'
-
+version '0.0.2'
 sourceCompatibility = 1.8
 
 repositories {
     mavenCentral()
 }
 
+mainClassName = "org.odict.wiktionary2odict.Main"
+
 dependencies {
     compile "org.apache.commons:commons-text:1.1"
+    compile "org.apache.commons:commons-compress:1.15"
+    compile "commons-cli:commons-cli:1.4"
     compile "org.jodd:jodd-core:3.8.5"
     compile "org.jodd:jodd-http:3.8.5"
     compile "org.jodd:jodd-json:3.8.5"
     compile "org.jodd:jodd-lagarto:3.8.5"
+    compile "org.jsoup:jsoup:1.11.2"
 }
+
+shadowJar {
+    baseName = 'wiktionary2odict'
+    classifier = null
+    version = version
+    configurations = [project.configurations.compile]
+    zip64 = true
+}
+
+jar.enabled = false

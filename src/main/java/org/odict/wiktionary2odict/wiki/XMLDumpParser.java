@@ -1,13 +1,14 @@
-package com.tylernickerson.wiktionary2odict.wiki;
+package org.odict.wiktionary2odict.wiki;
 
-import com.tylernickerson.wiktionary2odict.odict.Dictionary;
-import com.tylernickerson.wiktionary2odict.odict.Entry;
+import org.odict.wiktionary2odict.odict.Dictionary;
+import org.odict.wiktionary2odict.odict.Entry;
 import jodd.util.buffer.FastCharBuffer;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.events.XMLEvent;
 import java.io.FileReader;
+import java.io.Reader;
 import java.util.Map;
 
 public class XMLDumpParser {
@@ -15,13 +16,10 @@ public class XMLDumpParser {
     private static final String NODE_TITLE = "title";
     private static final String NODE_TEXT = "text";
 
-    public Dictionary process(String filename, String targetLanguage) {
+    public Dictionary process(Reader reader, String targetLanguage) {
         try {
-            System.out.println("Processing XML...");
-
             XMLInputFactory inputFactory = XMLInputFactory.newInstance();
-            XMLStreamReader xmlReader = inputFactory.createXMLStreamReader(
-                    new FileReader(filename));
+            XMLStreamReader xmlReader = inputFactory.createXMLStreamReader(reader);
 
             String prevNode = "";
             String curNode = "";
@@ -56,9 +54,15 @@ public class XMLDumpParser {
                     }
                     // Process the body of the entry
                     else if (curNode.equals(NODE_TEXT)) {
-                        if (text.contains(languageSearchString)) doWriteTextBuffer = true;
-                        else if (text.contains(WikiUtils.getSectionTerminator())) doWriteTextBuffer = false;
-                        if (doWriteTextBuffer) textBuffer.append(text);
+                        if (doWriteTextBuffer)
+                            textBuffer.append(text);
+                        else if (text.contains(languageSearchString)) {
+                            textBuffer.append(text);
+                            doWriteTextBuffer = true;
+                        } else if (text.contains(WikiUtils.getSectionTerminator())) {
+                            textBuffer.append(text);
+                            doWriteTextBuffer = false;
+                        }
                     }
                 }
                 // IF WE HIT THE CLOSING OF A NODE

@@ -1,10 +1,9 @@
-package com.tylernickerson.wiktionary2odict.wiki;
+package org.odict.wiktionary2odict.wiki;
 
-import com.tylernickerson.wiktionary2odict.constants.PartsOfSpeech;
-import com.tylernickerson.wiktionary2odict.odict.Entry;
-import com.tylernickerson.wiktionary2odict.odict.Etymology;
-import com.tylernickerson.wiktionary2odict.odict.Group;
-import com.tylernickerson.wiktionary2odict.odict.Usage;
+import org.odict.wiktionary2odict.odict.Etymology;
+import org.odict.wiktionary2odict.odict.Group;
+import org.odict.wiktionary2odict.odict.Usage;
+import org.odict.wiktionary2odict.odict.Entry;
 import jodd.http.HttpException;
 import jodd.http.HttpRequest;
 import jodd.json.JsonParser;
@@ -32,7 +31,7 @@ public class WikiUtils {
      * @param flags
      * @return
      */
-    private static Matcher getRegexMatcher(String regex, String text, int flags) {
+    public static Matcher getRegexMatcher(String regex, String text, int flags) {
         Pattern ptn = Pattern.compile(regex, flags);
         Matcher m = ptn.matcher(text);
         return m;
@@ -45,7 +44,7 @@ public class WikiUtils {
      * @param text
      * @return
      */
-    private static Matcher getRegexMatcher(String regex, String text) {
+    public static Matcher getRegexMatcher(String regex, String text) {
         return getRegexMatcher(regex, text, Pattern.CASE_INSENSITIVE | Pattern.DOTALL | Pattern.MULTILINE);
     }
 
@@ -70,8 +69,9 @@ public class WikiUtils {
             connectionRetries = 0;
             return jerry(html
                     .replace(" API", "")
-                    .replaceAll("<i>(.*)<\\/i>", "_$1_")
-                    .replaceAll("<b>(.*)<\\/b>", "__$1__")
+                    .replaceAll("<i>(.*?)</i>", "_$1_")
+                    .replaceAll("<b>(.*?)</b>", "__$1__")
+                    .replaceAll("<sup><a.*?>\\?</a></sup>", "")
             ).text().trim();
         } catch (HttpException exception) {
             if (connectionRetries > 3) {
@@ -155,9 +155,9 @@ public class WikiUtils {
         if (!wikiContainsLanguage(wikitext, language)) return null;
         if (title.trim().length() == 0) return null;
 
-//        System.out.println("processing word " + title);
         Entry entry = new Entry(title);
         HashMap<String, Object> map = new HashMap<>();
+
         int groupCount = 0;
 
         map.put(KEY_REQUIRED_NETWORK, false);
@@ -183,9 +183,12 @@ public class WikiUtils {
             else etyMatcher.reset();
 
             // If we found etymologies or are sticking with the default
-            while(etyMatcher.find() || useDefault) {
+            while (etyMatcher.find() || useDefault) {
                 String etymologyBody = (useDefault) ? contents : etyMatcher.group(1);
                 Etymology etymology = new Etymology();
+
+                // Add the section terminator to ensure a match
+                etymologyBody += String.format("\n\n%s", getSectionTerminator());
 
                 // Matches all sections for a designated part of speech (noun, verb, etc.)
                 Matcher usageMatcher = getRegexMatcher(
@@ -226,20 +229,17 @@ public class WikiUtils {
 
                             if (!definition.contains("rfdef")) { // make sure word is defined
                                 HashMap<String, Object> ptm = wikiToPlainTextMap(definition);
-
                                 definition = ptm.get(KEY_TEXT).toString();
                                 map.put(KEY_REQUIRED_NETWORK, ptm.get(KEY_REQUIRED_NETWORK));
 
                                 // If we found any subdefinitions
                                 if (subDefinitions.find()) {
                                     Group group = new Group(groupCount, definition);
-
                                     subDefinitions.reset();
 
-                                    while(subDefinitions.find()) {
+                                    while (subDefinitions.find()) {
                                         String subDefinition = subDefinitions.group(0);
                                         HashMap<String, Object> sptm = wikiToPlainTextMap(subDefinition);
-
                                         subDefinition = sptm.get(KEY_TEXT).toString();
 
                                         // Determine whether the network was used for any subdefinitions
@@ -278,10 +278,8 @@ public class WikiUtils {
             }
 
             // If there are no usages, what's the point in having an empty entry?
-            if (entry.getEtymologies().size() == 0) {
-//                System.out.println("Skipped " + title);
+            if (entry.getEtymologies().size() == 0)
                 return null;
-            }
 
             map.put(KEY_ENTRY, entry);
 

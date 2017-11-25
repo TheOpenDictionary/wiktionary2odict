@@ -1,4 +1,4 @@
-package com.tylernickerson.wiktionary2odict.odict;
+package org.odict.wiktionary2odict.odict;
 
 import java.util.ArrayList;
 import java.util.List;
